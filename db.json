@@ -58,6 +58,20 @@
             "servingSize": "100",
             "calories": "8800"
           }
+        },
+        {
+          "1588089047492": {
+            "food": "Apple",
+            "servingSize": "1000",
+            "calories": "88000"
+          }
+        },
+        {
+          "1588089071961": {
+            "food": "Apple",
+            "servingSize": "1",
+            "calories": "88"
+          }
         }
       ]
     }

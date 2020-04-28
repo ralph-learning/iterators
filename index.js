@@ -20,12 +20,18 @@ readline.on('line', async (line) => {
       const { data } = await axios.get('http://localhost:3001/food');
 
       function* listVegaFoods() {
-        let idx = 0;
-        const veganFiltered = data.filter(food => food.diatery_preferency.includes('vegan'));
+        try {
+          let idx = 0;
+          const veganFiltered = data.filter(food => food.diatery_preferency.includes('vegan'));
 
-        while(veganFiltered[idx]) {
-          yield veganFiltered[idx];
-          idx++;
+          while(veganFiltered[idx]) {
+            yield veganFiltered[idx];
+            idx++;
+          }
+        } catch(error) {
+          console.log('Something went wrong while listing vegan items', {
+            error
+          });
         }
       }
 
@@ -53,6 +59,8 @@ readline.on('line', async (line) => {
             (servingSize) => {
               if(servingSize === 'nevermind' | servingSize === 'n') {
                 actionIt.return();
+              } else if(typeof serving !== 'number' || serving === NaN) {
+                actionIt.throw('Please, numbers only');
               } else {
                 actionIt.next(servingSize);
               }
@@ -122,10 +130,18 @@ readline.on('line', async (line) => {
         let totalCalories = 0;
 
         function* getFoodLog() {
-          yield* foodLog;
+          try {
+            yield* foodLog;
+          } catch(error) {
+            console.log('Error reading the food log', {
+              error
+            })
+          }
         }
 
-        for(const entry of getFoodLog()) {
+        const logIterator = getFoodLog();
+
+        for(const entry of logIterator) {
           const timestamp = Object.keys(entry);
 
           if(isToday(new Date(Number(timestamp)))) {
@@ -133,6 +149,11 @@ readline.on('line', async (line) => {
               ${entry[timestamp].food}, ${entry[timestamp].servingSize} serving(s)
             `);
             totalCalories += Number(entry[timestamp].calories);
+          }
+
+          if(totalCalories > 12000) {
+            console.log('Impressive! You\'ve reached 12000 calories');
+            logIterator.return();
           }
         }
 

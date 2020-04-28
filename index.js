@@ -37,7 +37,7 @@ readline.on('line', async (line) => {
                 value: current,
                 done: true
               };
-            }
+            },
           }
         }
       }
@@ -57,7 +57,7 @@ readline.on('line', async (line) => {
 
         const actionIterator = {
           [Symbol.iterator]() {
-            const positions = [...this.actions];
+            let positions = [...this.actions];
 
             return {
               [Symbol.iterator]() {
@@ -77,6 +77,19 @@ readline.on('line', async (line) => {
                 return {
                   done: true,
                 };
+              },
+              return() {
+                positions = [];
+                return {
+                  done: true,
+                };
+              },
+              throw(error) {
+                console.log(error);
+                return {
+                  value: undefined,
+                  done: true,
+                };
               }
             }
           },
@@ -86,12 +99,16 @@ readline.on('line', async (line) => {
         function askForServingSize(food) {
           readline.question('How many serving did you eat? (as a decimal 1, 0.5, 1.25, etc)',
             (servingSize) => {
-              actionIt.next(servingSize, food);
+              if(servingSize === 'nevermind' | servingSize === 'n') {
+                actionIt.return();
+              } else {
+                actionIt.next(servingSize, food);
+              }
             }
           )
         }
 
-        function diaplayCalories(servingSize, food) {
+        async function diaplayCalories(servingSize, food) {
           const calories = food.calories;
 
           console.log(
@@ -99,6 +116,33 @@ readline.on('line', async (line) => {
               calories * parseInt(servingSize, 10),
             ).toFixed()} calories`
           );
+
+          const { data } = await axios.get('http://localhost:3001/users/1');
+          const usersLog = data.log || [];
+          console.log(data)
+          const putBody = {
+            ...data,
+            log: [
+              ...usersLog,
+              {
+                [Date.now()]: {
+                  food: food.name,
+                  servingSize,
+                  calories: Number.parseFloat(
+                    calories * parseInt(servingSize, 10),
+                  ).toFixed()
+                }
+              }
+            ]
+          };
+
+          try {
+            await axios.put('http://localhost:3001/users/1', {
+              ...putBody,
+            });
+          } catch(error) {
+            console.error(error)
+          }
 
           actionIt.next();
           readline.prompt();

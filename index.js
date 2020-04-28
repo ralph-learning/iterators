@@ -50,23 +50,78 @@ readline.on('line', async (line) => {
 
       break
     case '2':
-      readline.question('What would you like to log today:', async (item) => {
+      {
         const { data } = await axios.get('http://localhost:3001/food');
         const it = data[Symbol.iterator]();
-        let position = it.next();
-        while(!position.done) {
-          const food = position.value.name;
-          if(item === food) {
-            console.log(`${item} has ${position.value.calories} calories`);
-          }
+        let actionIt;
 
-          position = it.next()
+        const actionIterator = {
+          [Symbol.iterator]() {
+            const positions = [...this.actions];
+
+            return {
+              [Symbol.iterator]() {
+                return this;
+              },
+              next(...args) {
+                if(positions.length > 0) {
+                  const position = positions.shift();
+                  const result = position(...args);
+
+                  return {
+                    value: result,
+                    done: false,
+                  };
+                }
+
+                return {
+                  done: true,
+                };
+              }
+            }
+          },
+          actions: [askForServingSize, diaplayCalories],
         }
 
-        console.log(item);
-        readline.prompt();
-      });
-      break
+        function askForServingSize(food) {
+          readline.question('How many serving did you eat? (as a decimal 1, 0.5, 1.25, etc)',
+            (servingSize) => {
+              actionIt.next(servingSize, food);
+            }
+          )
+        }
+
+        function diaplayCalories(servingSize, food) {
+          const calories = food.calories;
+
+          console.log(
+            `${food.name} with a serving of ${servingSize} has a ${Number.parseFloat(
+              calories * parseInt(servingSize, 10),
+            ).toFixed()} calories`
+          );
+
+          actionIt.next();
+          readline.prompt();
+        }
+
+        readline.question('What would you like to log today:', async (item) => {
+          let position = it.next();
+          while(!position.done) {
+            const food = position.value.name;
+            if(item === food) {
+              actionIt = actionIterator[Symbol.iterator]();
+              actionIt.next(position.value);
+            }
+
+            position = it.next()
+          }
+          readline.prompt();
+        });
+        break
+      }
+    default:
+      console.log('Use numbers to select the menu options');
+      readline.prompt();
   }
 })
 

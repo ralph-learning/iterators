@@ -1,0 +1,36 @@
+{
+  "food": [
+    {
+      "id": 1,
+      "name": "Apple",
+      "calories": 88,
+      "serving_size": 6,
+      "diatery_preferency": ["vegan"],
+      "serving_size_units": "oz"
+    },
+    {
+      "id": 2,
+      "name": "Chicken breat",
+      "calories": 125,
+      "serving_size": 3,
+      "diatery_preferency": ["keto"],
+      "serving_size_units": "oz"
+    },
+    {
+      "id": 3,
+      "name": "Whole milk",
+      "calories": 240,
+      "serving_size": 8,
+      "diatery_preferency": ["keto"],
+      "serving_size_units": "oz"
+    }
+  ],
+  "users": [
+    {
+      "id": 1,
+      "firstname": "John",
+      "lastname": "Doe",
+      "email": "john@doe.com"
+    }
+  ]
+}

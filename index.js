@@ -8,6 +8,7 @@ const readline = require('readline').createInterface({
     ==== MENU ========
     1. Vegan list
     2. Log
+    3. Today
     ==================
   `,
 });
@@ -17,32 +18,18 @@ readline.on('line', async (line) => {
   switch(line.trim()) {
     case '1':
       const { data } = await axios.get('http://localhost:3001/food');
-      const veganFiltered = data.filter(food => food.diatery_preferency.includes('vegan'));
-      let idx = 0;
-      const veganIterable = {
-        [Symbol.iterator]() {
-          return {
-            [Symbol.iterator]() { return this; },
-            next() {
-              const current = veganFiltered[idx];
-              idx += 1;
-              if(current) {
-                return {
-                  value: current,
-                  done: false
-                }
-              }
 
-              return {
-                value: current,
-                done: true
-              };
-            },
-          }
+      function* listVegaFoods() {
+        let idx = 0;
+        const veganFiltered = data.filter(food => food.diatery_preferency.includes('vegan'));
+
+        while(veganFiltered[idx]) {
+          yield veganFiltered[idx];
+          idx++;
         }
       }
 
-      for(let value of veganIterable) {
+      for(let value of listVegaFoods()) {
         console.log(value.name);
       }
 
@@ -55,54 +42,19 @@ readline.on('line', async (line) => {
         const it = data[Symbol.iterator]();
         let actionIt;
 
-        const actionIterator = {
-          [Symbol.iterator]() {
-            let positions = [...this.actions];
-
-            return {
-              [Symbol.iterator]() {
-                return this;
-              },
-              next(...args) {
-                if(positions.length > 0) {
-                  const position = positions.shift();
-                  const result = position(...args);
-
-                  return {
-                    value: result,
-                    done: false,
-                  };
-                }
-
-                return {
-                  done: true,
-                };
-              },
-              return() {
-                positions = [];
-                return {
-                  done: true,
-                };
-              },
-              throw(error) {
-                console.log(error);
-                return {
-                  value: undefined,
-                  done: true,
-                };
-              }
-            }
-          },
-          actions: [askForServingSize, diaplayCalories],
+        function* actionGenerator() {
+          const food = yield;
+          const servingSize = yield askForServingSize();
+          yield diaplayCalories(servingSize, food);
         }
 
-        function askForServingSize(food) {
+        function askForServingSize() {
           readline.question('How many serving did you eat? (as a decimal 1, 0.5, 1.25, etc)',
             (servingSize) => {
               if(servingSize === 'nevermind' | servingSize === 'n') {
                 actionIt.return();
               } else {
-                actionIt.next(servingSize, food);
+                actionIt.next(servingSize);
               }
             }
           )
@@ -119,7 +71,6 @@ readline.on('line', async (line) => {
 
           const { data } = await axios.get('http://localhost:3001/users/1');
           const usersLog = data.log || [];
-          console.log(data)
           const putBody = {
             ...data,
             log: [
@@ -153,7 +104,8 @@ readline.on('line', async (line) => {
           while(!position.done) {
             const food = position.value.name;
             if(item === food) {
-              actionIt = actionIterator[Symbol.iterator]();
+              actionIt = actionGenerator();
+              actionIt.next();
               actionIt.next(position.value);
             }
 
@@ -163,9 +115,46 @@ readline.on('line', async (line) => {
         });
         break
       }
+    case '3':
+      readline.question('Email', async (emailAddress) => {
+        const { data } = await axios.get(`http://localhost:3001/users?email=${emailAddress}`);
+        const foodLog = data[0].log || [];
+        let totalCalories = 0;
+
+        function* getFoodLog() {
+          yield* foodLog;
+        }
+
+        for(const entry of getFoodLog()) {
+          const timestamp = Object.keys(entry);
+
+          if(isToday(new Date(Number(timestamp)))) {
+            console.log(`
+              ${entry[timestamp].food}, ${entry[timestamp].servingSize} serving(s)
+            `);
+            totalCalories += Number(entry[timestamp].calories);
+          }
+        }
+
+        console.log('-----------');
+        console.log(`total calories: ${totalCalories}`);
+
+        readline.prompt();
+      });
+
+      break;
     default:
       console.log('Use numbers to select the menu options');
       readline.prompt();
   }
 })
+
+function isToday(timestamp) {
+  const today = new Date();
+  return (
+    timestamp.getDate() === today.getDate() &&
+    timestamp.getMonth() === today.getMonth() &&
+    timestamp.getYear() === today.getYear()
+  );
+}
 
